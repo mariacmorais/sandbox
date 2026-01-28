@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cholecystectomy Incision Annotation</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="layout">
+    <header class="layout__header">
+      <h1>Cholecystectomy Incision Annotation</h1>
+      <p>
+        Review the assigned operative clip, then draw the incision line on the frozen final frame.
+        When you submit, your annotation is sent directly to the study team.
+      </p>
+    </header>
+
+    <section class="card">
+      <header class="card__header">
+        <h2>1. Participant Information</h2>
+      </header>
+      <div class="card__body card__body--stack">
+        <label class="field">
+          <span class="field__label">Email</span>
+          <input id="participantIdInput" class="field__control" type="text" inputmode="text" autocomplete="off" placeholder="Institutional and personal email accepted" />
+        </label>
+        <p class="help" id="participantIdStatus">
+          Enter your email. This is required before submitting your annotation.
+        </p>
+
+        <label class="field">
+          <span class="field__label">Age</span>
+          <input id="ageInput" class="field__control" type="number" min="18" placeholder="e.g., 28" />
+        </label>
+
+        <label class="field">
+          <span class="field__label">Gender</span>
+          <select id="genderInput" class="field__control">
+            <option value="">-- Select --</option>
+            <option>Male</option>
+            <option>Female</option>
+            <option>Non-Binary/NA</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Level of Training</span>
+          <select id="levelInput" class="field__control">
+            <option value="">-- Select --</option>
+            <option>PGY-1 General Surgery</option>
+            <option>PGY-2 General Surgery</option>
+            <option>PGY-3 General Surgery</option>
+            <option>PGY-4 General Surgery</option>
+            <option>PGY-5 General Surgery</option>
+            <option>Fellow</option>
+            <option>Attending Surgeon</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">If Fellow/Attending, Specialty (optional)</span>
+          <input id="specialtyInput" class="field__control" type="text" placeholder="e.g., HPB, MIS" />
+        </label>
+
+        <label class="field">
+          <span class="field__label">If Attending, Years of Practice (optional)</span>
+          <input id="yearsPracticeInput" class="field__control" type="number" min="0" placeholder="e.g., 5" />
+        </label>
+
+        <label class="field">
+          <span class="field__label">How much do you use AI systems?</span>
+          <select id="familiarityInput" class="field__control">
+            <option value="">-- Select --</option>
+            <option value="1">1 - Never / Rarely</option>
+            <option value="2">2 - About once a week</option>
+            <option value="3">3 - More than once a week</option>
+            <option value="4">4 - Often, low understanding</option>
+            <option value="5">5 - Often, good understanding</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">How are you feeling right now?</span>
+          <select id="fatigueInput" class="field__control">
+            <option value="">-- Select --</option>
+            <option value="1">1 - Fully alert</option>
+            <option value="2">2 - Very lively</option>
+            <option value="3">3 - Okay, fresh</option>
+            <option value="4">4 - A little tired</option>
+            <option value="5">5 - Moderately tired</option>
+            <option value="6">6 - Very tired</option>
+            <option value="7">7 - Completely exhausted</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <section class="card" aria-live="polite">
+      <header class="card__header card__header--space">
+        <div>
+          <h2>2. Watch Clip <span id="clipProgress" style="font-weight: 400; opacity: 0.7; font-size: 0.9em; margin-left: 0.5rem;"></span></h2>
+        </div>
+        <div class="card__actions">
+          <button id="replayBtn" type="button" class="ghost" disabled>Replay Clip</button>
+        </div>
+      </header>
+      <div class="card__body">
+        <div class="video-shell" id="videoShell">
+          <video id="caseVideo" playsinline preload="auto"></video>
+        </div>
+        <p class="help" id="videoStatus">Loading clip...</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <header class="card__header card__header--space">
+        <h2>3. Annotate Final Frame</h2>
+        <div class="card__actions">
+          <button id="clearLineBtn" type="button" class="ghost" disabled>Clear Line</button>
+        </div>
+      </header>
+      <div class="card__body">
+        <canvas id="finalFrame" width="1280" height="720" hidden></canvas>
+        <div class="canvas-container" id="canvasContainer" hidden>
+          <canvas id="annotationCanvas"></canvas>
+          <p class="canvas-hint">
+            Tap or click to place the start of the incision, drag, and release to finish. You can begin as
+            soon as the frozen frame appears, even if the clip is still playing above.
+          </p>
+        </div>
+        <p class="help" id="annotationStatus">The final frame appears below shortly. You can keep watching while it prepares.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <header class="card__header">
+        <h2>4. Submit Annotation</h2>
+      </header>
+      <div class="card__body card__body--stack">
+        <button id="submitAnnotationBtn" type="button" class="primary" disabled>Submit to Investigator & Next Clip</button>
+        <p class="help" id="submissionStatus">
+          Draw the incision on the frozen frame to enable submission.
+        </p>
+      </div>
+    </section>
+
+    <section id="confidenceSection" class="card" hidden>
+      <header class="card__header">
+        <h2>5. Final Question</h2>
+      </header>
+      <div class="card__body card__body--stack">
+        <label class="field">
+          <span class="field__label">On a scale from 1 to 5, how confident did you feel that your incision lines were safe and did not cross a danger zone?</span>
+          <select id="confidenceInput" class="field__control" required>
+            <option value="">Select one</option>
+            <option value="1">1 – Very Insecure</option>
+            <option value="2">2 – Slightly insecure</option>
+            <option value="3">3 – Neutral / Not sure</option>
+            <option value="4">4 – With a certain level of confidence</option>
+            <option value="5">5 – Very confident</option>
+          </select>
+        </label>
+        <button id="submitConfidenceBtn" class="primary">Submit Confidence</button>
+      </div>
+    </section>
+
+    <section id="completionCard" class="card" hidden style="text-align: center; padding: 3rem 1rem;">
+      <h2>All Clips Completed</h2>
+      <p style="color: var(--text-muted); margin-top: 1rem;">Thank you for your participation. You may close this window.</p>
+    </section>
+
+  </main>
+
+  <template id="toastTemplate">
+    <div class="toast" role="status" aria-live="polite"></div>
+  </template>
+
+  <script src="clip-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
