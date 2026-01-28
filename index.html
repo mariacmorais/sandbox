@@ -121,14 +121,15 @@
         </div>
       </header>
       <div class="card__body">
-        <canvas id="finalFrame" width="1280" height="720" hidden></canvas>
+        
         <div class="canvas-container" id="canvasContainer" hidden>
-          <canvas id="annotationCanvas"></canvas>
-          <p class="canvas-hint">
-            Tap or click to place the start of the incision, drag, and release to finish. You can begin as
-            soon as the frozen frame appears, even if the clip is still playing above.
-          </p>
+           <canvas id="finalFrame"></canvas>
+           <canvas id="annotationCanvas"></canvas>
+           <p class="canvas-hint">
+            Tap or click to place the start of the incision, drag, and release to finish.
+           </p>
         </div>
+
         <p class="help" id="annotationStatus">The final frame appears below shortly. You can keep watching while it prepares.</p>
       </div>
     </section>
