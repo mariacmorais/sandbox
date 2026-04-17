@@ -10,7 +10,7 @@
   "use strict";
 
   /* ------------------------------------------------------------------ */  
-  /*  CLIPS & SUBMISSION CONFIG  (from clip-config.js)                  */  
+  /*  CLIPS & SUBMISSION CONFIG                                         */  
   /* ------------------------------------------------------------------ */  
   var CLIPS = window.ANNOTATION_CLIPS || [];  
   var SUBMIT_CFG = window.ANNOTATION_SUBMISSION || null;
@@ -19,49 +19,48 @@
   /*  STATE                                                              */  
   /* ------------------------------------------------------------------ */  
   var currentClipIndex = 0;  
-  var annotationLine = null;       // { x1, y1, x2, y2 } normalised 0-1  
+  var annotationLine = null;  
   var drawing = false;  
   var startPt = null;  
   var frameReady = false;  
   var clipFullyWatched = false;  
-  var seekVideo = null;            // hidden <video> for frame extraction  
-  var lastPayload = null;          // stored so confidence can be appended
+  var seekVideo = null;  
+  var lastPayload = null;
 
   /* ------------------------------------------------------------------ */  
-  /*  DOM REFS  (matching index.html IDs)                               */  
+  /*  DOM REFS                                                           */  
   /* ------------------------------------------------------------------ */  
-  var emailInput       = document.getElementById("participantIdInput");  
-  var ageInput         = document.getElementById("ageInput");  
-  var genderSelect     = document.getElementById("genderInput");  
-  var levelSelect      = document.getElementById("levelInput");  
-  var specialtyInput   = document.getElementById("specialtyInput");  
-  var yearsInput       = document.getElementById("yearsPracticeInput");  
-  var aiSelect         = document.getElementById("familiarityInput");  
-  var alertSelect      = document.getElementById("fatigueInput");  
-  var participantStatus = document.getElementById("participantIdStatus");
+  var emailInput        = document.getElementById("participantIdInput");  
+  var ageInput          = document.getElementById("ageInput");  
+  var genderSelect      = document.getElementById("genderInput");  
+  var levelSelect       = document.getElementById("levelInput");  
+  var specialtyInput    = document.getElementById("specialtyInput");  
+  var yearsInput        = document.getElementById("yearsPracticeInput");  
+  var aiSelect          = document.getElementById("familiarityInput");  
+  var alertSelect       = document.getElementById("fatigueInput");
 
-  var videoEl          = document.getElementById("caseVideo");  
-  var replayBtn        = document.getElementById("replayBtn");  
-  var videoStatus      = document.getElementById("videoStatus");
+  var videoEl           = document.getElementById("caseVideo");  
+  var replayBtn         = document.getElementById("replayBtn");  
+  var videoStatus       = document.getElementById("videoStatus");
 
-  var canvasContainer  = document.getElementById("canvasContainer");  
-  var frameCanvas      = document.getElementById("finalFrame");  
-  var drawCanvas       = document.getElementById("annotationCanvas");  
-  var frameCtx         = frameCanvas.getContext("2d");  
-  var drawCtx          = drawCanvas.getContext("2d");  
-  var clearBtn         = document.getElementById("clearLineBtn");  
-  var annotationStatus = document.getElementById("annotationStatus");
+  var canvasContainer   = document.getElementById("canvasContainer");  
+  var frameCanvas       = document.getElementById("finalFrame");  
+  var drawCanvas        = document.getElementById("annotationCanvas");  
+  var frameCtx          = frameCanvas.getContext("2d");  
+  var drawCtx           = drawCanvas.getContext("2d");  
+  var clearBtn          = document.getElementById("clearLineBtn");  
+  var annotationStatus  = document.getElementById("annotationStatus");
 
-  var submitBtn        = document.getElementById("submitAnnotationBtn");  
-  var submissionStatus = document.getElementById("submissionStatus");
+  var submitBtn         = document.getElementById("submitAnnotationBtn");  
+  var submissionStatus  = document.getElementById("submissionStatus");
 
   var confidenceSection = document.getElementById("confidenceSection");  
   var confidenceSelect  = document.getElementById("confidenceInput");  
   var confidenceBtn     = document.getElementById("submitConfidenceBtn");
 
-  var completionCard   = document.getElementById("completionCard");
+  var completionCard    = document.getElementById("completionCard");
 
-  var toastTemplate    = document.getElementById("toastTemplate");  
+  var toastTemplate     = document.getElementById("toastTemplate");  
   var toastEl = null;
 
   /* ------------------------------------------------------------------ */  
@@ -116,7 +115,7 @@
   }
 
   /* ------------------------------------------------------------------ */  
-  /*  DRAWING  (annotation layer only – frame stays on its own canvas)  */  
+  /*  ANNOTATION DRAWING                                                 */  
   /* ------------------------------------------------------------------ */  
   function renderAnnotation() {  
     drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);  
@@ -148,24 +147,25 @@
   /* ------------------------------------------------------------------ */  
   /*  ASYNC FINAL-FRAME EXTRACTION                                      */  
   /*                                                                     */  
-  /*  Strategy: we use the SAME video element trick but WITHOUT          */  
-  /*  crossOrigin (GitHub raw doesn't send CORS headers for video).     */  
-  /*  Instead of drawImage from a cross-origin video (which taints the  */  
-  /*  canvas), we let the playback video itself seek in the background. */  
-  /*  We create a SECOND invisible video, set its src, wait for         */  
-  /*  metadata, seek to near-end, then capture the frame.               */  
-  /*                                                                     */  
-  /*  If crossOrigin blocks drawImage, we fall back to capturing from   */  
-  /*  the main playback video at its ended event.                       */  
+  /*  Two-pronged approach:                                              */  
+  /*  A) Hidden seekVideo tries to load + seek to end immediately.      */  
+  /*  B) Fallback: if seekVideo fails (CORS, format), capture from      */  
+  /*     the main playback video when it ends.                          */  
+  /*  Whichever succeeds first paints the frame.                        */  
   /* ------------------------------------------------------------------ */  
+  var frameCaptured = false; // guard so only one source paints
+
   function extractFinalFrame(src) {  
     frameReady = false;  
-    annotationLine = null;  
+    frameCaptured = false;  
+    annotationLine = null;
+
+    // IMPORTANT: keep container hidden until frame is actually painted  
     canvasContainer.hidden = true;  
     clearBtn.disabled = true;  
     annotationStatus.textContent = "Preparing final frame…";
 
-    // Tear down previous seekVideo  
+    // --- Clean up previous seekVideo ---  
     if (seekVideo) {  
       seekVideo.pause();  
       seekVideo.removeAttribute("src");  
@@ -174,78 +174,79 @@
       seekVideo = null;  
     }
 
+    // --- Strategy A: Hidden seek video ---  
     seekVideo = document.createElement("video");  
-    // Do NOT set crossOrigin – GitHub raw doesn't support CORS for large files  
-    // This means we can still drawImage as long as we don't read pixels back  
     seekVideo.preload = "auto";  
     seekVideo.muted = true;  
     seekVideo.playsInline = true;  
     seekVideo.setAttribute("playsinline", "");  
-    seekVideo.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;pointer-events:none;";  
+    seekVideo.style.cssText =  
+      "position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;pointer-events:none;opacity:0;";  
     document.body.appendChild(seekVideo);
-
-    var settled = false;
 
     seekVideo.addEventListener("loadedmetadata", function onMeta() {  
       seekVideo.removeEventListener("loadedmetadata", onMeta);  
+      if (frameCaptured) return;  
       var target = Math.max(0, seekVideo.duration - 0.05);  
+      console.log("seekVideo: seeking to", target.toFixed(2), "of", seekVideo.duration.toFixed(2));  
       seekVideo.currentTime = target;  
     });
 
     seekVideo.addEventListener("seeked", function onSeeked() {  
       seekVideo.removeEventListener("seeked", onSeeked);  
-      if (settled) return;  
-      settled = true;  
+      if (frameCaptured) return;  
+      console.log("seekVideo: seeked, attempting paint");  
       try {  
-        paintFinalFrame(seekVideo);  
+        paintFinalFrame(seekVideo, "seekVideo");  
       } catch (err) {  
-        console.warn("seekVideo drawImage failed, will use fallback:", err);  
-        setupFallbackCapture();  
+        console.warn("seekVideo paint failed:", err.message);  
+        // Strategy B will handle it  
       }  
     });
 
-    seekVideo.addEventListener("error", function onErr() {  
-      seekVideo.removeEventListener("error", onErr);  
-      if (settled) return;  
-      settled = true;  
-      console.warn("seekVideo failed to load, using fallback capture.");  
-      setupFallbackCapture();  
+    seekVideo.addEventListener("error", function () {  
+      console.warn("seekVideo error:", seekVideo.error);  
+      // Strategy B will handle it  
     });
 
     seekVideo.src = src;  
-    seekVideo.load();  
+    seekVideo.load();
+
+    // --- Strategy B: Capture from playback video at end ---  
+    // Also listen for the playback video to end — if seekVideo hasn't  
+    // painted by then, capture from the visible video.  
+    function fallbackOnEnd() {  
+      videoEl.removeEventListener("ended", fallbackOnEnd);  
+      if (frameCaptured) return;  
+      console.log("Fallback: capturing from playback video at ended");  
+      try {  
+        paintFinalFrame(videoEl, "playbackVideo-ended");  
+      } catch (err) {  
+        console.error("Fallback paint failed:", err.message);  
+        annotationStatus.textContent = "⚠ Could not capture frame. Try reloading.";  
+      }  
+    }  
+    // Remove any old listener first  
+    videoEl.removeEventListener("ended", fallbackOnEnd);  
+    videoEl.addEventListener("ended", fallbackOnEnd);
+
+    // Store the fallback remover so we can clean it up on next clip load  
+    extractFinalFrame._fallbackRemover = function () {  
+      videoEl.removeEventListener("ended", fallbackOnEnd);  
+    };  
   }
 
-  /* Fallback: capture from the main playback video when it ends */  
-  function setupFallbackCapture() {  
-    annotationStatus.textContent = "Frame will appear when clip finishes playing…";
-
-    function onEnded() {  
-      videoEl.removeEventListener("ended", onEnded);  
-      try {  
-        paintFinalFrame(videoEl);  
-      } catch (err2) {  
-        console.error("Fallback frame capture also failed:", err2);  
-        annotationStatus.textContent = "⚠ Could not capture frame. Try a different browser.";  
-      }  
+  function paintFinalFrame(sourceVideo, debugLabel) {  
+    if (frameCaptured) return; // already done  
+    if (!sourceVideo || sourceVideo.videoWidth === 0) {  
+      console.warn("paintFinalFrame skipped — no video dimensions yet from", debugLabel);  
+      return;  
     }
 
-    // If video already ended, capture now  
-    if (videoEl.ended && videoEl.readyState >= 2) {  
-      try {  
-        paintFinalFrame(videoEl);  
-      } catch (err3) {  
-        console.error("Immediate fallback failed:", err3);  
-        annotationStatus.textContent = "⚠ Could not capture frame.";  
-      }  
-    } else {  
-      videoEl.addEventListener("ended", onEnded);  
-    }  
-  }
+    var w = sourceVideo.videoWidth;  
+    var h = sourceVideo.videoHeight;
 
-  function paintFinalFrame(sourceVideo) {  
-    var w = sourceVideo.videoWidth || 640;  
-    var h = sourceVideo.videoHeight || 360;
+    console.log("paintFinalFrame from", debugLabel, ":", w, "x", h);
 
     frameCanvas.width = w;  
     frameCanvas.height = h;  
@@ -254,10 +255,12 @@
 
     frameCtx.drawImage(sourceVideo, 0, 0, w, h);
 
+    frameCaptured = true;  
     frameReady = true;  
     canvasContainer.hidden = false;  
     clearBtn.disabled = false;  
-    annotationStatus.textContent = "Final frame ready — draw your incision line above.";  
+    annotationStatus.textContent =  
+      "Final frame ready — draw your incision line above.";  
     updateSubmitBtn();  
   }
 
@@ -279,7 +282,12 @@
     e.preventDefault();  
     var rect = drawCanvas.getBoundingClientRect();  
     var cur = pointerPos(e, rect);  
-    annotationLine = { x1: startPt.x, y1: startPt.y, x2: cur.x, y2: cur.y };  
+    annotationLine = {  
+      x1: startPt.x,  
+      y1: startPt.y,  
+      x2: cur.x,  
+      y2: cur.y  
+    };  
     renderAnnotation();  
   }
 
@@ -308,9 +316,12 @@
   /* ------------------------------------------------------------------ */  
   /*  RESIZE                                                             */  
   /* ------------------------------------------------------------------ */  
-  window.addEventListener("resize", debounce(function () {  
-    if (frameReady) renderAnnotation();  
-  }, 200));
+  window.addEventListener(  
+    "resize",  
+    debounce(function () {  
+      if (frameReady) renderAnnotation();  
+    }, 200)  
+  );
 
   /* ------------------------------------------------------------------ */  
   /*  CLIP LOADING                                                       */  
@@ -319,11 +330,13 @@
     if (index >= CLIPS.length) {  
       showDone();  
       return;  
-    }  
+    }
+
     currentClipIndex = index;  
     clipFullyWatched = false;  
     annotationLine = null;  
     frameReady = false;  
+    frameCaptured = false;  
     lastPayload = null;  
     canvasContainer.hidden = true;  
     submitBtn.disabled = true;  
@@ -331,44 +344,73 @@
     replayBtn.disabled = true;  
     clearBtn.disabled = true;  
     videoStatus.textContent = "Loading " + clipLabel(index) + "…";  
-    submissionStatus.textContent = "Draw the incision on the frozen frame to enable submission.";  
+    submissionStatus.textContent =  
+      "Draw the incision on the frozen frame to enable submission.";  
     annotationStatus.textContent = "Preparing final frame…";
+
+    // Remove old fallback listener  
+    if (extractFinalFrame._fallbackRemover) {  
+      extractFinalFrame._fallbackRemover();  
+    }
 
     var src = clipSrc(index);
 
-    // Update header to show progress  
-    var headerH2 = videoEl.closest(".card").querySelector("h2");  
-    if (headerH2) {  
-      headerH2.textContent = "2. Watch Clip (" + (index + 1) + " / " + CLIPS.length + ")";  
+    // Update clip counter in the header  
+    var videoCard = videoEl.closest(".card");  
+    if (videoCard) {  
+      var h2 = videoCard.querySelector("h2");  
+      if (h2)  
+        h2.textContent =  
+          "2. Watch Clip (" + (index + 1) + " / " + CLIPS.length + ")";  
     }
 
-    // 1) Playback video  
-    videoEl.removeAttribute("crossorigin");  
+    // 1) Set up playback video with controls so user can always play  
+    videoEl.pause();  
+    videoEl.removeAttribute("src");  
+    videoEl.load(); // reset  
     videoEl.src = src;  
-    if (CLIPS[index].poster) videoEl.poster = CLIPS[index].poster;  
-    videoEl.load();  
-    videoEl.play().catch(function () {  
-      // Autoplay may be blocked; that's fine, user can tap play  
-      videoStatus.textContent = "Tap play to watch " + clipLabel(index) + ".";  
-    });
+    if (CLIPS[index].poster) {  
+      videoEl.poster = CLIPS[index].poster;  
+    } else {  
+      videoEl.removeAttribute("poster");  
+    }  
+    videoEl.load();
 
-    // 2) Simultaneously extract final frame (async)  
+    // Try autoplay (muted videos can autoplay in most browsers)  
+    var playPromise = videoEl.play();  
+    if (playPromise && playPromise.catch) {  
+      playPromise.catch(function (err) {  
+        console.log("Autoplay blocked:", err.message, "— user can use controls.");  
+        videoStatus.textContent =  
+          "Press play to watch " + clipLabel(index) + ".";  
+      });  
+    }
+
+    // 2) Simultaneously extract final frame  
     extractFinalFrame(src);  
   }
 
-  videoEl.addEventListener("loadeddata", function () {  
-    videoStatus.textContent = "Playing " + clipLabel(currentClipIndex) +  
-      " (" + (currentClipIndex + 1) + " of " + CLIPS.length + ")…";  
+  videoEl.addEventListener("canplay", function () {  
+    videoStatus.textContent =  
+      "Playing " +  
+      clipLabel(currentClipIndex) +  
+      " (" +  
+      (currentClipIndex + 1) +  
+      " of " +  
+      CLIPS.length +  
+      ")…";  
     replayBtn.disabled = false;  
   });
 
   videoEl.addEventListener("ended", function () {  
     clipFullyWatched = true;  
-    videoStatus.textContent = clipLabel(currentClipIndex) + " finished. Replay or annotate below.";  
+    videoStatus.textContent =  
+      clipLabel(currentClipIndex) + " finished. Replay or annotate below.";  
   });
 
   videoEl.addEventListener("error", function () {  
-    videoStatus.textContent = "⚠ Error loading clip. Check connection and try reloading.";  
+    videoStatus.textContent =  
+      "⚠ Error loading clip. Check your connection and reload.";  
     console.error("Playback video error:", videoEl.error);  
   });
 
@@ -378,7 +420,7 @@
   });
 
   /* ------------------------------------------------------------------ */  
-  /*  SUBMIT ANNOTATION  (to Formspree)                                 */  
+  /*  SUBMIT ANNOTATION                                                  */  
   /* ------------------------------------------------------------------ */  
   submitBtn.addEventListener("click", function () {  
     if (!annotationLine) return;
@@ -414,39 +456,33 @@
     lastPayload = payload;  
     console.log("Annotation payload:", payload);
 
-    // Send to Formspree  
     if (SUBMIT_CFG && SUBMIT_CFG.endpoint) {  
       submitBtn.disabled = true;  
       submissionStatus.textContent = "Submitting…";
 
       fetch(SUBMIT_CFG.endpoint, {  
         method: SUBMIT_CFG.method || "POST",  
-        headers: SUBMIT_CFG.headers || { "Content-Type": "application/json" },  
+        headers: SUBMIT_CFG.headers || {  
+          "Content-Type": "application/json"  
+        },  
         body: JSON.stringify(payload)  
       })  
         .then(function (res) {  
-          if (res.ok) {  
-            showToast("Annotation submitted ✓");  
-            submissionStatus.textContent = "Submitted! Now answer the confidence question below.";  
-          } else {  
-            throw new Error("Server responded " + res.status);  
-          }  
-        })  
-        .catch(function (err) {  
-          console.error("Submission error:", err);  
-          showToast("Submission failed – check console.");  
-          submissionStatus.textContent = "⚠ Submission failed. Try again.";  
-          submitBtn.disabled = false;  
-          return;  
-        })  
-        .then(function () {  
-          // Show confidence  
+          if (!res.ok) throw new Error("Server responded " + res.status);  
+          showToast("Annotation submitted ✓");  
+          submissionStatus.textContent =  
+            "Submitted! Answer the confidence question below.";  
           confidenceSection.hidden = false;  
           confidenceSelect.value = "";  
           confidenceSection.scrollIntoView({ behavior: "smooth" });  
+        })  
+        .catch(function (err) {  
+          console.error("Submission error:", err);  
+          showToast("Submission failed – try again.");  
+          submissionStatus.textContent = "⚠ Submission failed. Try again.";  
+          submitBtn.disabled = false;  
         });  
     } else {  
-      // No endpoint configured – just proceed  
       showToast("Annotation saved (no endpoint configured).");  
       confidenceSection.hidden = false;  
       confidenceSelect.value = "";  
@@ -466,7 +502,6 @@
 
     console.log("Confidence:", conf, "for", clipId(currentClipIndex));
 
-    // Send confidence as a separate submission  
     if (SUBMIT_CFG && SUBMIT_CFG.endpoint && lastPayload) {  
       var confPayload = {  
         email: lastPayload.email,  
@@ -476,11 +511,12 @@
         confidence: conf,  
         type: "confidence",  
         timestamp: new Date().toISOString()  
-      };
-
+      };  
       fetch(SUBMIT_CFG.endpoint, {  
         method: SUBMIT_CFG.method || "POST",  
-        headers: SUBMIT_CFG.headers || { "Content-Type": "application/json" },  
+        headers: SUBMIT_CFG.headers || {  
+          "Content-Type": "application/json"  
+        },  
         body: JSON.stringify(confPayload)  
       }).catch(function (err) {  
         console.error("Confidence submission error:", err);  
@@ -490,7 +526,6 @@
     showToast("Moving to next clip…");  
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    // Small delay so the scroll feels natural  
     setTimeout(function () {  
       loadClip(currentClipIndex + 1);  
     }, 400);  
@@ -500,9 +535,10 @@
   /*  DONE                                                               */  
   /* ------------------------------------------------------------------ */  
   function showDone() {  
-    // Hide all working cards  
     var cards = document.querySelectorAll("main.layout > section.card");  
-    cards.forEach(function (c) { c.hidden = true; });  
+    cards.forEach(function (c) {  
+      c.hidden = true;  
+    });  
     completionCard.hidden = false;  
     showToast("All clips completed – thank you!", 5000);  
   }
@@ -515,8 +551,8 @@
     loadClip(0);  
   } else {  
     videoStatus.textContent = "No clips configured.";  
-    annotationStatus.textContent = "Add clips to window.ANNOTATION_CLIPS in clip-config.js.";  
-    console.warn("ANNOTATION_CLIPS is empty or undefined.");  
-  }
-
+    annotationStatus.textContent =  
+      "Add clips to window.ANNOTATION_CLIPS in clip-config.js.";  
+    console.warn("ANNOTATION_CLIPS is empty.");  
+  }  
 })();  
