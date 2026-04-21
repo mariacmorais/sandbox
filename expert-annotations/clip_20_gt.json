@@ -1,0 +1,34 @@
+{
+    "canvasSize": {
+        "height": 720,
+        "width": 1280
+    },
+    "incisionDetails": [
+        {
+            "pixels": {
+                "start": {
+                    "x": 671.594,
+                    "y": 356.8
+                },
+                "end": {
+                    "x": 725.654,
+                    "y": 314.092
+                }
+            }
+        },
+        {
+            "pixels": {
+                "start": {
+                    "x": 682.174,
+                    "y": 373.69
+                },
+                "end": {
+                    "x": 722.952,
+                    "y": 346.328
+                }
+            }
+        }
+    ],
+    "participantId": "ground_truth",
+    "videoSrc": "https://raw.githubusercontent.com/mariacmorais/safety-corridor-annotation/main/clip_20.mp4"
+}
