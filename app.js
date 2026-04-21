@@ -1019,7 +1019,13 @@ function finishStudy() {
 
   // Show confidence question  
   confidenceSection.hidden = false;
-
+  
+  const confidenceHeader = document.getElementById("confidenceHeader");  
+  if (confidenceHeader) {  
+    confidenceHeader.textContent = midConfidenceSubmitted  
+      ? "Phase 2 Complete – Confidence Question"  
+      : "Phase 1 Complete – Confidence Question";  
+  }
   // Update the label depending on which phase just ended  
   const confidenceLabel = confidenceSection.querySelector("label.field");  
   if (!midConfidenceSubmitted) {  
