@@ -1057,6 +1057,11 @@ submitConfidenceBtn.addEventListener("click", async () => {
 });
 
 async function submitAnnotation() {  
+  // Submit survey data on first clip only  
+  if (currentClipIndex === 0) {  
+    await submitInitialSurveyAsCSV();  
+  }  
+
   if (!latestPayload) {  
     showToast("Draw the incision before submitting.");  
     return;  
@@ -1163,17 +1168,71 @@ function getFilenameHint() {
 function buildAdditionalFields(filenameHint) {  
   const fields = { ...baseAdditionalFields };
 
-  const fatigue = document.getElementById("fatigueInput")?.value;
+  // Collect other form fields  
+  const age = document.getElementById("ageInput")?.value.trim();  
+  const gender = document.getElementById("genderInput")?.value;  
+  const level_of_training = document.getElementById("levelInput")?.value;  
+  const specialty = document.getElementById("specialtyInput")?.value.trim();  
+  const years_of_practice = document.getElementById("yearsPracticeInput")?.value.trim();  
+  const familiarity = document.getElementById("familiarityInput")?.value;  
+  const fatigue = document.getElementById("fatigueInput")?.value;  
+  const confidence = document.getElementById("confidenceInput")?.value;
 
   if (participantIdValue) {  
-    fields.studyId = participantIdValue;  
     fields.participantId = participantIdValue;  
+    fields.studyId = participantIdValue;  
   }  
   if (filenameHint) fields.filenameHint = filenameHint;  
-  if (fatigue) fields.fatigue = fatigue;
+  if (age) fields.age = age;  
+  if (gender) fields.gender = gender;  
+  if (level_of_training) fields.level_of_training = level_of_training;  
+  if (specialty) fields.specialty = specialty;  
+  if (years_of_practice) fields.years_of_practice = years_of_practice;  
+  if (familiarity) fields.familiarity = familiarity;  
+  if (fatigue) fields.fatigue = fatigue;  
+  if (confidence) fields.confidence = confidence;
 
   return fields;  
 }
+
+// --- INITIAL SURVEY SUBMISSION ---  
+async function submitInitialSurveyAsCSV() {  
+  const endpoint = submissionConfig.endpoint;  
+  if (!endpoint) return;
+
+  const participantId = document.getElementById("participantIdInput")?.value.trim() || "";  
+  const timestamp = new Date().toISOString();
+
+  const header = [  
+    "participantId", "age", "gender", "level_of_training",  
+    "specialty", "years_of_practice", "familiarity", "fatigue", "generatedAt"  
+  ];
+
+  const row = [  
+    participantId,  
+    document.getElementById("ageInput")?.value.trim() || "",  
+    document.getElementById("genderInput")?.value || "",  
+    document.getElementById("levelInput")?.value || "",  
+    document.getElementById("specialtyInput")?.value.trim() || "",  
+    document.getElementById("yearsPracticeInput")?.value.trim() || "",  
+    document.getElementById("familiarityInput")?.value || "",  
+    document.getElementById("fatigueInput")?.value || "",  
+    timestamp  
+  ];
+
+  const csvString = header.join(",") + "\n" + row.join(",");  
+  const filename = `survey_${participantId || "anon"}_${timestamp}.csv`;
+
+  try {  
+    await fetch(endpoint, {  
+      method: submissionConfig.method || "POST",  
+      headers: submissionConfig.headers || { "Content-Type": "application/json" },  
+      body: JSON.stringify({ annotation: { filename: filename, csv: csvString } })  
+    });  
+  } catch (err) {  
+    console.error("Initial survey CSV failed", err);  
+  }  
+}  
 
 replayBtn.addEventListener("click", handleReplay);  
 video.addEventListener("loadeddata", handleVideoLoaded);  
