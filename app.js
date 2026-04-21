@@ -40,6 +40,7 @@ const annotationCtx = annotationCanvas.getContext("2d");
 const EXPERT_ANNOTATION_BASE_URL = "expert-annotations/";
 
 // STATE VARIABLES  
+let midConfidenceSubmitted = false;
 let frameCaptured = false;  
 let currentClip = null;  
 let activeLine = null;  
@@ -1016,48 +1017,41 @@ function finishStudy() {
     if (section) section.hidden = true;  
   });
 
-  confidenceSection.hidden = false;  
-}
+  // Show confidence question  
+  confidenceSection.hidden = false;
 
-submitConfidenceBtn.addEventListener("click", async () => {  
-  const score = confidenceInput.value;  
-  if (!score) {  
-    showToast("Please select a score before submitting.");  
-    return;  
+  // Update the label depending on which phase just ended  
+  const confidenceLabel = confidenceSection.querySelector("label.field");  
+  if (!midConfidenceSubmitted) {  
+    confidenceLabel.innerHTML = `  
+      You've completed the first 10 clips. On a scale from 1 to 5, how confident did you feel that your incision lines were safe and did not cross a danger zone?  
+      <select id="confidenceInput" class="field__control" required>  
+        <option value="">Select one</option>  
+        <option value="1">1 – Very Insecure</option>  
+        <option value="2">2 – Slightly insecure</option>  
+        <option value="3">3 – Neutral / Not sure</option>  
+        <option value="4">4 – With a certain level of confidence</option>  
+        <option value="5">5 – Very confident</option>  
+      </select>  
+    `;  
+  } else {  
+    confidenceLabel.innerHTML = `  
+      You've completed all 20 clips. On a scale from 1 to 5, how confident did you feel that your incision lines were safe and did not cross a danger zone?  
+      <select id="confidenceInput" class="field__control" required>  
+        <option value="">Select one</option>  
+        <option value="1">1 – Very Insecure</option>  
+        <option value="2">2 – Slightly insecure</option>  
+        <option value="3">3 – Neutral / Not sure</option>  
+        <option value="4">4 – With a certain level of confidence</option>  
+        <option value="5">5 – Very confident</option>  
+      </select>  
+    `;  
   }
 
-  submitConfidenceBtn.disabled = true;  
-  submitConfidenceBtn.textContent = "Submitting...";
-
-  const payload = {  
-    studyId: "CHOLE_PHASE_02_CONFIDENCE",  
-    participantId: participantIdValue,  
-    confidenceScore: score,  
-    timestamp: new Date().toISOString()  
-  };
-
-  try {  
-    if (submissionConfig.endpoint) {  
-      await fetch(submissionConfig.endpoint, {  
-        method: "POST",  
-        headers: { "Content-Type": "application/json" },  
-        body: JSON.stringify(payload),  
-      });  
-    } else {  
-      await new Promise((r) => setTimeout(r, 600));  
-      console.log("Mock Confidence Submission:", payload);  
-    }
-
-    confidenceSection.hidden = true;  
-    completionCard.hidden = false;  
-    showToast("Response saved. Thank you!");  
-  } catch (error) {  
-    console.error(error);  
-    showToast("Error submitting confidence. Please try again.");  
-    submitConfidenceBtn.disabled = false;  
-    submitConfidenceBtn.textContent = "Submit Confidence";  
-  }  
-});
+  // Reset the button state  
+  submitConfidenceBtn.disabled = false;  
+  submitConfidenceBtn.textContent = "Submit Confidence";  
+}  
 
 async function submitAnnotation() {  
   // Submit survey data on first clip only  
@@ -1132,11 +1126,14 @@ async function submitAnnotation() {
 
     currentClipIndex++;
 
-    if (currentClipIndex < clips.length) {  
+    // Midpoint confidence check after clip 10  
+    if (currentClipIndex === 10 && !midConfidenceSubmitted) {  
+      finishStudy();  
+    } else if (currentClipIndex < clips.length) {  
       loadClip(currentClipIndex);  
     } else {  
       finishStudy();  
-    }  
+    }
   } catch (error) {  
     submissionStatus.textContent = "Submission failed. Please try again.";  
     submitAnnotationBtn.disabled = false;  
