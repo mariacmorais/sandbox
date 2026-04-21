@@ -152,12 +152,6 @@ if (annotationType) {
   expertLines = null;  
 }  
 
-  expertLines = await loadExpertAnnotation(clipIdBase, annotationType);
-
-  if (expertLines) {  
-    console.log(`Loaded expert lines for ${currentClip.id}`);  
-  }
-
   canvasContainer.hidden = true;  
   video.removeAttribute("controls");  
   video.setAttribute("playsinline", "");  
