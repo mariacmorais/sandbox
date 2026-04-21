@@ -1244,6 +1244,67 @@ video.addEventListener("progress", handleVideoProgress);
 clearLineBtn.addEventListener("click", clearLine);  
 submitAnnotationBtn.addEventListener("click", submitAnnotation);
 
+// --- CONFIDENCE BUTTON HANDLER ---  
+submitConfidenceBtn.addEventListener("click", async () => {  
+  const scoreEl = document.getElementById("confidenceInput");  
+  const score = scoreEl?.value;  
+  if (!score) {  
+    showToast("Please select a score before submitting.");  
+    return;  
+  }
+
+  submitConfidenceBtn.disabled = true;  
+  submitConfidenceBtn.textContent = "Submitting...";
+
+  const phase = midConfidenceSubmitted ? "POST_PHASE_2" : "POST_PHASE_1";
+
+  const payload = {  
+    studyId: `CHOLE_CONFIDENCE_${phase}`,  
+    participantId: participantIdValue,  
+    confidenceScore: score,  
+    phase: phase,  
+    clipsSeen: midConfidenceSubmitted ? 20 : 10,  
+    timestamp: new Date().toISOString()  
+  };
+
+  try {  
+    if (submissionConfig.endpoint) {  
+      await fetch(submissionConfig.endpoint, {  
+        method: "POST",  
+        headers: { "Content-Type": "application/json" },  
+        body: JSON.stringify(payload),  
+      });  
+    } else {  
+      await new Promise((r) => setTimeout(r, 600));  
+      console.log("Mock Confidence Submission:", payload);  
+    }
+
+    if (!midConfidenceSubmitted) {  
+      // Midpoint — resume with clip 11  
+      midConfidenceSubmitted = true;  
+      confidenceSection.hidden = true;  
+      showToast("Midpoint response saved. Continuing to next phase...");
+
+      // Show annotation sections again  
+      annotationSections.forEach((section) => {  
+        if (section) section.hidden = false;  
+      });
+
+      loadClip(currentClipIndex);  
+    } else {  
+      // Final — show completion  
+      confidenceSection.hidden = true;  
+      completionCard.hidden = false;  
+      showToast("Response saved. Thank you!");  
+    }  
+  } catch (error) {  
+    console.error(error);  
+    showToast("Error submitting confidence. Please try again.");  
+    submitConfidenceBtn.disabled = false;  
+    submitConfidenceBtn.textContent = "Submit Confidence";  
+  }  
+});  
+
 participantIdInput.addEventListener("input", (event) => {  
   applyParticipantId(event.target.value);  
 });
