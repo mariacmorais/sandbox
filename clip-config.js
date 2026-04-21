@@ -54,7 +54,7 @@ window.ANNOTATION_CLIPS = [
     src: "https://raw.githubusercontent.com/mariacmorais/safety-corridor-annotation/main/clip_16.mp4",
     poster: "",
     annotationType: ""
-  }
+  },
   // Clip 17 - Mean Parkland: 3.6 / Mean Nassar: 3 //
   {
     id: "clip_17",
@@ -110,7 +110,7 @@ window.ANNOTATION_CLIPS = [
     src: "https://raw.githubusercontent.com/mariacmorais/safety-corridor-annotation/main/clip_16.mp4",
     poster: "",
     annotationType: "gt"
-  }
+  },
     // Clip 02 - Mean Parkland: 1 / Mean Nassar: 1 //
   {
     id: "clip_02",
