@@ -123,52 +123,51 @@ async function loadExpertAnnotation(clipId, annotationType = "gt") {
   }  
 }
 
-async function loadClip(index) {  
+async function loadClip(index) {    
   if (index < 0 || index >= clips.length) return;
 
   const clip = clips[index];
 
-  if (clipLabel) {  
-    clipLabel.textContent = `${clip.label} (${index + 1} of ${clips.length})`;  
+  if (clipLabel) {    
+    clipLabel.textContent = `${clip.label} (${index + 1} of ${clips.length})`;    
   }
 
   resetAnnotationState();
 
-  currentClip = {  
-    ...clip,  
-    poster: clip.poster || "",  
+  currentClip = {    
+    ...clip,    
+    poster: clip.poster || "",    
   };
 
-  // Last change for expert lines
-const annotationType = currentClip.annotationType;  
-const clipIdBase = currentClip.id.replace(/_(mock|gt)$/, "");
+  const annotationType = currentClip.annotationType;    
+  const clipIdBase = currentClip.id.replace(/_(mock|gt)$/, "");
 
-if (annotationType) {  
-  expertLines = await loadExpertAnnotation(clipIdBase, annotationType);  
-  if (expertLines) {  
-    console.log(`Loaded expert lines for ${currentClip.id}`);  
-  }  
-} else {  
-  expertLines = null;  
-}  
-
-  canvasContainer.hidden = true;  
-  video.removeAttribute("controls");  
-  video.setAttribute("playsinline", "");  
-  video.setAttribute("webkit-playsinline", "");  
+  if (annotationType) {    
+    expertLines = await loadExpertAnnotation(clipIdBase, annotationType);    
+    if (expertLines) {    
+      console.log(`Loaded expert lines for ${currentClip.id}`);    
+    }    
+  } else {    
+    expertLines = null;    
+  }
+  
+  canvasContainer.hidden = true;    
+  video.removeAttribute("controls");    
+  video.setAttribute("playsinline", "");    
+  video.setAttribute("webkit-playsinline", "");    
   video.crossOrigin = "anonymous";
 
-  if (currentClip.poster) {  
-    video.setAttribute("poster", currentClip.poster);  
-  } else {  
-    video.removeAttribute("poster");  
+  if (currentClip.poster) {    
+    video.setAttribute("poster", currentClip.poster);    
+  } else {    
+    video.removeAttribute("poster");    
   }
 
-  video.src = currentClip.src;  
-  video.load();  
-  videoStatus.textContent = `Loading ${currentClip.label}...`;  
-  replayBtn.disabled = true;  
-  prepareHelperVideo();  
+  video.src = currentClip.src;    
+  video.load();    
+  videoStatus.textContent = `Loading ${currentClip.label}...`;    
+  replayBtn.disabled = true;    
+  prepareHelperVideo();    
 }
 
 function looksLikeLocalPath(value) {  
