@@ -139,8 +139,18 @@ async function loadClip(index) {
     poster: clip.poster || "",  
   };
 
-  const annotationType = currentClip.annotationType || "gt";  
-  const clipIdBase = currentClip.id.replace(/_(mock|gt)$/, "");
+  // Last change for expert lines
+const annotationType = currentClip.annotationType;  
+const clipIdBase = currentClip.id.replace(/_(mock|gt)$/, "");
+
+if (annotationType) {  
+  expertLines = await loadExpertAnnotation(clipIdBase, annotationType);  
+  if (expertLines) {  
+    console.log(`Loaded expert lines for ${currentClip.id}`);  
+  }  
+} else {  
+  expertLines = null;  
+}  
 
   expertLines = await loadExpertAnnotation(clipIdBase, annotationType);
 
