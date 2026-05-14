@@ -1,11 +1,11 @@
 window.ANNOTATION_CLIPS = [  
   // Clip 02 - Mean Parkland: 1 / Mean Nassar: 1 //  
   {  
-    id: "clip_01",  
+    id: "clip_02",  
     label: "Clip 1",  
-    src: "https://raw.githubusercontent.com/mariacmorais/safety-corridor-annotation/main/clip_01.mp4",  
+    src: "https://raw.githubusercontent.com/mariacmorais/safety-corridor-annotation/main/clip_02.mp4",  
     poster: "",  
-    annotationType: "mock"  
+    annotationType: "gt"  
   },  
   // Clip 19 - Mean Parkland: 2.8 / Mean Nassar: 2.2 //  
   {  
