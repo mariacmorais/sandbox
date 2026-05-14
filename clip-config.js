@@ -5,7 +5,7 @@ window.ANNOTATION_CLIPS = [
     label: "Clip 1",  
     src: "https://raw.githubusercontent.com/mariacmorais/safety-corridor-annotation/main/clip_01.mp4",  
     poster: "",  
-    annotationType: ""  
+    annotationType: "mock"  
   },  
   // Clip 19 - Mean Parkland: 2.8 / Mean Nassar: 2.2 //  
   {  
